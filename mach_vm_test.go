@@ -5,6 +5,7 @@
 package mach
 
 import (
+	"os"
 	"testing"
 	"unsafe"
 
@@ -12,22 +13,23 @@ import (
 )
 
 func TestMachVMMirroredBuffer(t *testing.T) {
-	address, err := Mach_vm_allocate(Mach_task_self(), 0, 8192*2, VM_FLAGS_ANYWHERE)
+	bufferSize := os.Getpagesize()
+	address, err := Mach_vm_allocate(Mach_task_self(), 0, uint(bufferSize*2), VM_FLAGS_ANYWHERE)
 	require.NoError(t, err)
 
-	_, err = Mach_vm_allocate(Mach_task_self(), address, 8192, VM_FLAGS_FIXED|VM_FLAGS_OVERWRITE)
+	_, err = Mach_vm_allocate(Mach_task_self(), address, uint(bufferSize), VM_FLAGS_FIXED|VM_FLAGS_OVERWRITE)
 	require.NoError(t, err)
 
-	remapped_address, _, _, err := Mach_vm_remap(Mach_task_self(), address+8192, 8192, 0, VM_FLAGS_FIXED|VM_FLAGS_OVERWRITE, Mach_task_self(), address, false, VM_INHERIT_NONE)
+	remapped_address, _, _, err := Mach_vm_remap(Mach_task_self(), address+uintptr(bufferSize), uint(bufferSize), 0, VM_FLAGS_FIXED|VM_FLAGS_OVERWRITE, Mach_task_self(), address, false, VM_INHERIT_NONE)
 	require.NoError(t, err)
-	require.Equal(t, address+8192, remapped_address)
+	require.Equal(t, address+uintptr(bufferSize), remapped_address)
 
-	buffer := unsafe.Slice((*byte)(unsafe.Pointer(address)), 8192)
-	mirror := unsafe.Slice((*byte)(unsafe.Pointer(address+8192)), 8192)
+	buffer := unsafe.Slice((*byte)(unsafe.Pointer(address)), bufferSize)
+	mirror := unsafe.Slice((*byte)(unsafe.Pointer(address+uintptr(bufferSize))), bufferSize)
 	expected := []byte("foobarbaz")
 	copy(buffer, expected)
 	require.Equal(t, expected, mirror[:len(expected)])
 
-	err = Mach_vm_deallocate(Mach_task_self(), address, 8192*2)
+	err = Mach_vm_deallocate(Mach_task_self(), address, uint(bufferSize*2))
 	require.NoError(t, err)
 }
