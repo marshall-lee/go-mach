@@ -115,7 +115,7 @@ func (arg funcArg) is32() bool {
 		return false
 	}
 	switch arg.typ {
-	case "int32", "uint32", "mach_error_t", "vm_map_t":
+	case "int32", "uint32", "mach_error_t", "vm_map_t", "vm_prot_t", "vm_inherit_t":
 		return true
 	default:
 		return false
